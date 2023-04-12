@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Serial Data</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            setInterval(function() {
+                $.getJSON('/serial_data', function(data) {
+                    $('#serial-data').text(data.serial);
+                });
+            }, 1000);
+        });
+    </script>
+</head>
+
+<body>
+    <h1>The serial input is: <span id="serial-data"></span></h1>
+</body>
+
+</html>
