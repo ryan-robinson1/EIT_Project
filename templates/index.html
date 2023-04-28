@@ -1,22 +1,142 @@
 <!DOCTYPE html>
+
+
 <html>
 
 <head>
-    <title>Serial Data</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            setInterval(function() {
-                $.getJSON('/serial_data', function(data) {
-                    $('#serial-data').text(data.serial);
-                });
-            }, 1000);
-        });
-    </script>
+    <title>Serial Data Display</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
 
 <body>
-    <h1>The serial input is: <span id="serial-data"></span></h1>
+    <!-- Navigation Bar -->
+
+    <!-- Jumbotron Section -->
+    <div class="jumbotron text-center">
+        <h1 class="display-4">Welcome to SmartStock!</h1>
+        <p class="lead"> Personal Assistant for Intelligent Grocery Item Monitoring</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container mt-5">
+        <!-- Selection Section -->
+        <div id="select-item" class="card p-4" style="display: none;">
+            <div class="form-group">
+                <label>Select an item:</label>
+                <select id="item-dropdown" class="form-control">
+                    <option>Rice</option>
+                    <option>Coffee</option>
+                    <option>Bananas</option>
+                </select>
+            </div>
+            <button id="register-btn" class="btn btn-primary">Register</button>
+        </div>
+        <!-- Item List -->
+        <ul id="item-list" class="list-group mt-4"></ul>
+    </div>
+
+    <script>
+        var prevData = [];
+        var lastAddedValue = null;
+        var buffer = []; // Buffer array to hold the last 10 serial reads
+        var avg_no_weight = 0;
+        var curr_serial_data = 0;
+        var totalObjectWeight = 0;
+        var curr_obj_weight = 0;
+        var curr_obj_percentage = 0;
+        var curr_obj_percentage_str = "";
+        var serial_data_counterweight = 0;
+        var start_counter_weight = false;
+
+        function checkSerialData() {
+            $.getJSON('/serial_data', function(data) {
+                let serialData = parseInt(data.serial);
+                $('#serial-data').text(serialData);
+                if (start_counter_weight) {
+                    serial_data_counterweight += 0.5
+                }
+
+                curr_serial_data = serialData;
+                curr_obj_weight = ((serialData - serial_data_counterweight) - (avg_no_weight)) - 400;
+
+                curr_obj_percentage = curr_obj_weight / totalObjectWeight;
+
+                console.log("Average no weight:" + avg_no_weight);
+                console.log("Current Object Weight:" + curr_obj_weight);
+                console.log("Total Object Weight: " + totalObjectWeight);
+
+                // Convert to a percentage.
+                curr_obj_percentage *= 100;
+
+                // Round to nearest 10%
+                curr_obj_percentage = Math.round(curr_obj_percentage / 10) * 10;
+                if (curr_obj_percentage > 100) {
+                    curr_obj_percentage = 100;
+                }
+
+                // Convert to a string and append a percentage sign.
+                if (curr_obj_percentage > 14) {
+                    curr_obj_percentage_str = curr_obj_percentage + "%";
+                } else {
+                    curr_obj_percentage_str = "ITEM AMOUNT LOW";
+                }
+
+
+
+
+
+                // Add the new serial read to the buffer and remove the oldest one if there are more than 10
+                buffer.push(serialData);
+                if (buffer.length > 10) {
+                    buffer.shift();
+                }
+
+
+
+
+
+
+                prevData.push(serialData);
+                if (prevData.length > 3) {
+                    prevData.shift(); // keep only the last 3 data points
+
+                    let firstData = prevData[0];
+                    let lastData = prevData[2];
+                    let changePercent = (lastData - firstData) / firstData * 100;
+
+                    if (changePercent > 15) {
+                        let temp = 0;
+                        for (let i = 0; i < 5; i++) {
+                            temp += buffer[i];
+                        }
+                        avg_no_weight = temp / 6;
+                        $('#select-item').show();
+                    }
+                }
+
+                // Update the current object percentage for the last item in the list
+                $('#item-list li:last').text(function(index, oldText) {
+                    return oldText.split(' : ')[0] + ' : ' + curr_obj_percentage_str;
+                });
+            });
+        }
+
+        $(document).ready(function() {
+            setInterval(checkSerialData, 1000);
+
+            $('#register-btn').click(function() {
+                let selectedItem = $('#item-dropdown').val();
+                $('#item-list').append('<li class="list-group-item">' + selectedItem + ' : ' +
+                    curr_obj_percentage_str + '</li>');
+                $('#select-item').hide();
+                lastAddedValue = prevData[2];
+                totalObjectWeight = (curr_serial_data - (avg_no_weight)) - 400;
+                start_counter_weight = true;
+            });
+        });
+    </script>
+    </script>
 </body>
 
 </html>

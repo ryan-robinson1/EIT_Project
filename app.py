@@ -3,7 +3,7 @@ from flask import Flask, render_template, jsonify
 import serial
 
 app = Flask(__name__)
-ser = serial.Serial("COM5", 115200)
+ser = serial.Serial("COM3", 115200)
 
 
 @app.route("/serial_data")
